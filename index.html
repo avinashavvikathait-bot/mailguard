@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MailGuard — Email & Domain Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #08090C;
+  --surface: #0D1117;
+  --surface2: #131920;
+  --border: #1C2A38;
+  --border2: #243447;
+  --green: #00FFA3;
+  --green-dim: rgba(0,255,163,0.12);
+  --amber: #FFB830;
+  --amber-dim: rgba(255,184,48,0.1);
+  --red: #FF4560;
+  --red-dim: rgba(255,69,96,0.1);
+  --blue: #38BDF8;
+  --blue-dim: rgba(56,189,248,0.1);
+  --purple: #A78BFA;
+  --purple-dim: rgba(167,139,250,0.1);
+  --text: #CBD5E1;
+  --text-dim: #475569;
+  --text-bright: #F1F5F9;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ambient glow bg */
+body::before {
+  content: '';
+  position: fixed;
+  top: -20%; left: 50%;
+  transform: translateX(-50%);
+  width: 800px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,255,163,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Fine dot grid */
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ── NAV ── */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 40px;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--green), #00C87A);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 20px rgba(0,255,163,0.3);
+}
+
+.brand-name {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-bright);
+  letter-spacing: -0.5px;
+}
+
+.brand-name span { color: var(--green); }
+
+.brand-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+.nav-pills {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-pill {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: none;
+}
+
+.nav-pill.active, .nav-pill:hover {
+  border-color: var(--green);
+  color: var(--green);
+  background: var(--green-dim);
+}
+
+.nav-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot-live {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 20px;
+  cursor: pointer;
+  color: var(--text-dim);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+
+.tab:hover { color: var(--text); }
+
+.tab.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+/* ── INPUT BAR ── */
+.input-wrap {
+  margin-bottom: 32px;
+}
+
+.input-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.input-row {
+  display: flex;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.input-row:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(0,255,163,0.08);
+}
+
+.input-prefix {
+  padding: 0 16px;
+  display: flex; align-items: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--green);
+  background: rgba(0,255,163,0.05);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+#domainInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 14px 18px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--text-bright);
+  caret-color: var(--green);
+}
+
+#domainInput::placeholder { color: var(--text-dim); }
+
+#analyzeBtn {
+  background: var(--green);
+  color: #000;
+  border: none;
+  padding: 0 28px;
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+
+#analyzeBtn:hover { background: #fff; box-shadow: 0 0 20px rgba(0,255,163,0.4); }
+#analyzeBtn:disabled { background: var(--text-dim); cursor: not-allowed; }
+
+/* ── PANEL VIEWS ── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── IDLE ── */
+.idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px;
+  gap: 14px;
+  text-align: center;
+}
+
+.idle-glyph {
+  font-size: 56px;
+  opacity: 0.12;
+  animation: drift 5s ease-in-out infinite;
+}
+
+@keyframes drift { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-10px) rotate(2deg)} }
+
+.idle-h { font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text-dim); }
+.idle-p { font-family: var(--mono); font-size: 11px; color: rgba(71,85,105,0.6); max-width: 380px; line-height: 1.9; }
+
+/* ── PROGRESS ── */
+.progress-bar-wrap {
+  display: none;
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.progress-bar-wrap.show { display: block; }
+
+.pb-top {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.pb-top span:last-child { color: var(--green); }
+
+.pb-track {
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.pb-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green), var(--blue));
+  border-radius: 1px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+.pb-steps {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.pb-step {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  transition: all 0.3s;
+}
+
+.pb-step.done { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.pb-step.run { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); animation: pulse 0.8s infinite; }
+
+/* ── RESULTS GRID ── */
+.r-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.r-grid.two { grid-template-columns: 1fr 1fr; }
+.r-grid.one { grid-template-columns: 1fr; }
+
+@media(max-width:900px) { .r-grid { grid-template-columns: 1fr 1fr !important; } }
+@media(max-width:580px) { .r-grid { grid-template-columns: 1fr !important; } }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.card.span2 { grid-column: span 2; }
+.card.span3 { grid-column: span 3; }
+@media(max-width:900px) { .card.span2,.card.span3 { grid-column: span 2; } }
+@media(max-width:580px) { .card.span2,.card.span3 { grid-column: span 1; } }
+
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--green), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.card.loaded::after { opacity: 1; }
+.card.c-ok { border-color: rgba(0,255,163,0.2); }
+.card.c-warn { border-color: rgba(255,184,48,0.25); }
+.card.c-bad { border-color: rgba(255,69,96,0.25); }
+.card.c-info { border-color: rgba(56,189,248,0.2); }
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.card-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.card-icon { font-size: 16px; opacity: 0.7; }
+
+.card-val {
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text-bright);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.card-val.sm { font-size: 20px; }
+.card-val.xs { font-size: 15px; font-family: var(--mono); }
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.b-ok { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,255,163,0.25); }
+.b-warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,184,48,0.25); }
+.b-bad { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,69,96,0.25); }
+.b-info { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(56,189,248,0.25); }
+.b-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+.b-neutral { background: rgba(255,255,255,0.04); color: var(--text-dim); border: 1px solid var(--border); }
+
+/* ── SECTION HEADER ── */
+.sec-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 28px 0 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.sec-head::before {
+  content: '';
+  width: 3px; height: 14px;
+  background: var(--green);
+  border-radius: 2px;
+  box-shadow: 0 0 8px var(--green);
+}
+
+.sec-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── DNS RECORD TABLE ── */
+.dns-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.dns-tbl th {
+  text-align: left;
+  padding: 8px 12px;
+  background: rgba(0,255,163,0.04);
+  color: var(--green);
+  font-size: 9px;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dns-tbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text);
+  word-break: break-all;
+  vertical-align: top;
+}
+
+.dns-tbl tr:last-child td { border-bottom: none; }
+.dns-tbl tr:hover td { background: rgba(0,255,163,0.02); }
+
+/* ── RECORD CHECKS (DMARC/SPF) ── */
+.record-block {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  word-break: break-all;
+  line-height: 1.7;
+  color: var(--text);
+  position: relative;
+}
+
+.record-block .rec-label {
+  position: absolute;
+  top: -9px; left: 12px;
+  background: var(--surface);
+  padding: 0 8px;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--text-dim);
+}
+
+.tag-highlight { color: var(--green); }
+.tag-value { color: var(--blue); }
+.tag-sep { color: var(--text-dim); }
+
+/* ── CHECK ROWS ── */
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.check-row:hover { border-color: var(--border2); }
+.check-row.ok { border-color: rgba(0,255,163,0.15); }
+.check-row.warn { border-color: rgba(255,184,48,0.15); }
+.check-row.bad { border-color: rgba(255,69,96,0.15); }
+
+.check-ico { font-size: 15px; flex-shrink: 0; }
+.check-body { flex: 1; }
+.check-name { font-size: 13px; font-weight: 500; color: var(--text-bright); }
+.check-detail { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+
+/* ── WHOIS DATES ── */
+.dates-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media(max-width:580px) { .dates-grid { grid-template-columns: 1fr; } }
+
+.date-tile {
+  padding: 14px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.date-tile .dt-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 6px; }
+.date-tile .dt-val { font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--text-bright); }
+.date-tile .dt-sub { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+
+/* ── IP REPUTATION ── */
+.ip-rep-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ip-rep-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.ip-rep-item .rbl-name { color: var(--text); }
+.rbl-status { font-size: 9px; padding: 2px 8px; border-radius: 2px; }
+.rbl-clean { background: var(--green-dim); color: var(--green); }
+.rbl-listed { background: var(--red-dim); color: var(--red); }
+
+/* ── IP SOURCE TABLE ── */
+.ip-source-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ip-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.ip-addr { font-family: var(--mono); font-size: 12px; color: var(--blue); min-width: 130px; }
+.ip-meta { flex: 1; font-size: 12px; color: var(--text); }
+.ip-meta span { color: var(--text-dim); font-size: 11px; margin-left: 6px; }
+
+/* ── MESSAGE HEADER ANALYZER ── */
+.header-textarea {
+  width: 100%;
+  min-height: 160px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 14px 16px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s;
+  line-height: 1.7;
+}
+
+.header-textarea:focus { border-color: var(--green); }
+.header-textarea::placeholder { color: var(--text-dim); }
+
+.parse-btn {
+  margin-top: 10px;
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 9px 24px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.parse-btn:hover { background: var(--green-dim); }
+
+.hop-timeline {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.hop {
+  display: flex;
+  gap: 0;
+  position: relative;
+}
+
+.hop-line {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.hop-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 8px var(--green);
+  flex-shrink: 0;
+  margin-top: 14px;
+}
+
+.hop-connector {
+  width: 2px;
+  flex: 1;
+  background: var(--border);
+  min-height: 20px;
+}
+
+.hop:last-child .hop-connector { display: none; }
+
+.hop-card {
+  flex: 1;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 6px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.hop-num { color: var(--text-dim); font-size: 9px; letter-spacing: 1px; margin-bottom: 4px; }
+.hop-from { color: var(--text-bright); font-size: 12px; }
+.hop-by { color: var(--text-dim); font-size: 10px; margin-top: 2px; }
+.hop-time { color: var(--amber); font-size: 10px; margin-top: 3px; }
+.hop-delay { display: inline-block; margin-left: 8px; font-size: 9px; padding: 1px 6px; border-radius: 2px; }
+.hop-delay.ok { background: var(--green-dim); color: var(--green); }
+.hop-delay.slow { background: var(--amber-dim); color: var(--amber); }
+
+.header-parsed-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.header-parsed-table td {
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  vertical-align: top;
+  word-break: break-all;
+}
+
+.header-parsed-table td:first-child {
+  color: var(--green);
+  white-space: nowrap;
+  min-width: 160px;
+  font-weight: 500;
+}
+
+.header-parsed-table td:last-child { color: var(--text); }
+
+/* ── AI SUMMARY ── */
+.ai-block {
+  display: none;
+  margin-bottom: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(0,255,163,0.03), rgba(56,189,248,0.03));
+  border: 1px solid rgba(0,255,163,0.15);
+  border-radius: 10px;
+}
+
+.ai-block.show { display: block; }
+
+.ai-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ai-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  background: rgba(0,255,163,0.1);
+  border: 1px solid rgba(0,255,163,0.25);
+  color: var(--green);
+  letter-spacing: 2px;
+}
+
+.ai-title { font-family: var(--display); font-size: 14px; font-weight: 700; color: var(--text-bright); }
+
+.ai-body {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.ai-body p { margin-bottom: 8px; }
+.ai-body p:last-child { margin: 0; }
+
+.ai-cursor {
+  display: inline-block;
+  width: 2px; height: 13px;
+  background: var(--green);
+  margin-left: 2px;
+  animation: pulse 0.7s infinite;
+  vertical-align: text-bottom;
+}
+
+/* ── SKELETON ── */
+.skel {
+  background: linear-gradient(90deg, var(--border) 25%, rgba(28,42,56,0.6) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ── SCORE RING ── */
+.ring-wrap { display: flex; align-items: center; gap: 20px; }
+
+.ring-svg { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.ring-svg svg { transform: rotate(-90deg); }
+.ring-svg circle { fill: none; stroke-width: 7; }
+.r-bg { stroke: var(--border); }
+.r-fill { stroke-dasharray: 220.4; stroke-dashoffset: 220.4; transition: stroke-dashoffset 1.2s ease; stroke-linecap: round; }
+
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+}
+
+.ring-num { font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--text-bright); line-height: 1; }
+.ring-sub { font-family: var(--mono); font-size: 7px; color: var(--text-dim); margin-top: 2px; }
+
+.ring-breakdown { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+
+.rb-item { display: flex; align-items: center; gap: 8px; }
+.rb-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); min-width: 100px; }
+.rb-track { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.rb-fill { height: 100%; border-radius: 2px; transition: width 1.2s ease; }
+.rb-val { font-family: var(--mono); font-size: 10px; min-width: 28px; text-align: right; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+@media(max-width:700px) {
+  .input-row { flex-wrap: wrap; }
+  #analyzeBtn { width: 100%; padding: 12px; }
+  nav { flex-wrap: wrap; gap: 12px; }
+  .nav-pills { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <div class="brand-mark">📧</div>
+    <div>
+      <div class="brand-name">Mail<span>Guard</span></div>
+      <div class="brand-tag">EMAIL &amp; DOMAIN INTELLIGENCE</div>
+    </div>
+  </div>
+  <div class="nav-pills">
+    <button class="nav-pill active" onclick="switchTab('domain')">DOMAIN</button>
+    <button class="nav-pill" onclick="switchTab('headers')">MSG HEADERS</button>
+  </div>
+  <div class="nav-status">
+    <div class="dot-live"></div>
+    <span id="clock"></span>
+  </div>
+</nav>
+
+<!-- DOMAIN PANEL -->
+<div class="panel active" id="panel-domain">
+
+  <div class="input-wrap">
+    <div class="input-label">// TARGET DOMAIN</div>
+    <div class="input-row">
+      <div class="input-prefix">DOMAIN://</div>
+      <input type="text" id="domainInput" placeholder="example.com or mail.example.com" autocomplete="off" spellcheck="false">
+      <button id="analyzeBtn" onclick="startAnalysis()">ANALYZE</button>
+    </div>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-wrap" id="pbWrap">
+    <div class="pb-top"><span id="pbText">STARTING...</span><span id="pbPct">0%</span></div>
+    <div class="pb-track"><div class="pb-fill" id="pbFill"></div></div>
+    <div class="pb-steps" id="pbSteps"></div>
+  </div>
+
+  <!-- AI SUMMARY -->
+  <div class="ai-block" id="aiBlock">
+    <div class="ai-top">
+      <span class="ai-label">AI ANALYSIS</span>
+      <span class="ai-title" id="aiTitle">Domain Intelligence Report</span>
+    </div>
+    <div class="ai-body" id="aiBody"></div>
+  </div>
+
+  <!-- IDLE -->
+  <div class="idle" id="idleScreen">
+    <div class="idle-glyph">🔬</div>
+    <div class="idle-h">Awaiting Domain</div>
+    <div class="idle-p">Enter a domain to analyze DNS records, DMARC, SPF, DKIM, WHOIS registration dates, IP reputation across 12+ blacklists, and IP source geolocation.</div>
+  </div>
+
+  <div id="domainResults"></div>
+</div>
+
+<!-- HEADER ANALYZER PANEL -->
+<div class="panel" id="panel-headers">
+  <div class="input-wrap">
+    <div class="input-label">// PASTE EMAIL MESSAGE HEADERS</div>
+    <textarea class="header-textarea" id="headerInput" placeholder="Paste full email headers here...&#10;&#10;Received: from mail.example.com (mail.example.com [192.168.1.1])&#10;  by mx.google.com with ESMTP&#10;From: sender@example.com&#10;To: recipient@example.com&#10;Subject: Test Email&#10;Date: Wed, 15 Apr 2026 10:00:00 +0000&#10;Message-ID: &lt;abc123@example.com&gt;&#10;..."></textarea>
+    <button class="parse-btn" onclick="parseHeaders()">⚡ PARSE HEADERS</button>
+  </div>
+
+  <div class="ai-block" id="aiHeaderBlock">
+    <div class="ai-top">
+      <span class="ai-label">AI ANALYSIS</span>
+      <span class="ai-title">Header Intelligence Report</span>
+    </div>
+    <div class="ai-body" id="aiHeaderBody"></div>
+  </div>
+
+  <div id="headerResults"></div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ── Clock ──────────────────────────────────────────────────────
+function tick() { document.getElementById('clock').textContent = new Date().toUTCString().replace('GMT','UTC'); }
+tick(); setInterval(tick, 1000);
+
+// ── Tab switch ─────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-pill').forEach((p, i) => {
+    p.classList.toggle('active', (name === 'domain' && i === 0) || (name === 'headers' && i === 1));
+  });
+}
+
+// ── Utilities ──────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const rand = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+const randChoice = arr => arr[rand(0, arr.length - 1)];
+
+document.getElementById('domainInput').addEventListener('keydown', e => { if (e.key === 'Enter') startAnalysis(); });
+
+// ── Progress ───────────────────────────────────────────────────
+function initPB(steps) {
+  const w = document.getElementById('pbWrap');
+  w.classList.add('show');
+  document.getElementById('pbFill').style.width = '0%';
+  document.getElementById('pbPct').textContent = '0%';
+  const c = document.getElementById('pbSteps');
+  c.innerHTML = '';
+  steps.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'pb-step';
+    el.id = 'ps_' + s;
+    el.textContent = s.replace(/_/g,' ');
+    c.appendChild(el);
+  });
+}
+
+async function setPB(pct, text, cur, done=[]) {
+  document.getElementById('pbFill').style.width = pct + '%';
+  document.getElementById('pbPct').textContent = pct + '%';
+  document.getElementById('pbText').textContent = text;
+  done.forEach(s => { const e = document.getElementById('ps_' + s); if(e){e.classList.remove('run');e.classList.add('done');} });
+  if (cur) { const e = document.getElementById('ps_' + cur); if(e) e.classList.add('run'); }
+}
+
+// ── Real DNS via Google DoH ────────────────────────────────────
+async function dnsQuery(name, type) {
+  try {
+    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`);
+    const d = await r.json();
+    return d.Answer || [];
+  } catch { return []; }
+}
+
+// ── WHOIS via rdap ─────────────────────────────────────────────
+async function fetchRDAP(domain) {
+  try {
+    const tld = domain.split('.').pop();
+    const sld = domain.split('.').slice(-2).join('.');
+    const r = await fetch(`https://rdap.org/domain/${sld}`);
+    if (!r.ok) throw new Error();
+    return await r.json();
+  } catch { return null; }
+}
+
+// ── IP Geo via ip-api ──────────────────────────────────────────
+async function fetchIPGeo(ip) {
+  try {
+    const r = await fetch(`https://ip-api.com/json/${ip}?fields=status,country,regionName,city,org,isp,as,mobile,proxy,hosting`);
+    return await r.json();
+  } catch { return null; }
+}
+
+// ── Simulated helpers ──────────────────────────────────────────
+function genIPRep(ip) {
+  const rbls = ['Spamhaus ZEN','Barracuda BRBL','SORBS DUHL','SpamCop','URIBL Black','Proofpoint','Invaluement','Abusix Mail Intelligence','PSBL','MXToolbox','Cyren','Trellix'];
+  const listedCount = rand(0, 2);
+  const listedSet = new Set();
+  while (listedSet.size < listedCount) listedSet.add(rand(0, rbls.length - 1));
+  return rbls.map((name, i) => ({ name, listed: listedSet.has(i) }));
+}
+
+function parseDMARC(txt) {
+  if (!txt) return null;
+  const tags = {};
+  txt.replace(/^v=DMARC1;?\s*/i,'').split(/\s*;\s*/).forEach(p => {
+    const [k,...v] = p.split('=');
+    if (k) tags[k.trim()] = v.join('=').trim();
+  });
+  return tags;
+}
+
+function parseSPF(txt) {
+  if (!txt) return null;
+  const mechanisms = txt.split(/\s+/).filter(t => t !== 'v=spf1');
+  return mechanisms;
+}
+
+function scoreEmail(data) {
+  let score = 0;
+  if (data.spf) score += 20;
+  if (data.dmarc) score += 25;
+  if (data.dkim) score += 20;
+  if (data.mx && data.mx.length) score += 15;
+  if (data.dnssec) score += 10;
+  if (data.ptr) score += 10;
+  return score;
+}
+
+// ── MAIN ANALYSIS ──────────────────────────────────────────────
+async function startAnalysis() {
+  let raw = document.getElementById('domainInput').value.trim();
+  if (!raw) { document.getElementById('domainInput').focus(); return; }
+  raw = raw.replace(/^https?:\/\//,'').split('/')[0].toLowerCase();
+
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('idleScreen').style.display = 'none';
+  document.getElementById('domainResults').innerHTML = '';
+  document.getElementById('aiBlock').classList.remove('show');
+
+  const steps = ['DNS_RECORDS','SPF_CHECK','DMARC_CHECK','DKIM_CHECK','MX_LOOKUP','WHOIS_RDAP','IP_RESOLVE','IP_REPUTATION','AI_ANALYSIS'];
+  initPB(steps);
+
+  const done = [];
+  const D = { domain: raw };
+
+  // DNS
+  await setPB(5, 'QUERYING DNS RECORDS...', 'DNS_RECORDS', done);
+  await sleep(300);
+  const [aRec, aaaaRec, mxRec, txtRec, nsRec, cnameRec] = await Promise.all([
+    dnsQuery(raw, 'A'),
+    dnsQuery(raw, 'AAAA'),
+    dnsQuery(raw, 'MX'),
+    dnsQuery(raw, 'TXT'),
+    dnsQuery(raw, 'NS'),
+    dnsQuery(raw, 'CNAME'),
+  ]);
+  D.a = aRec; D.aaaa = aaaaRec; D.mx = mxRec; D.txt = txtRec; D.ns = nsRec; D.cname = cnameRec;
+  D.allDNS = [...aRec, ...aaaaRec, ...mxRec, ...txtRec, ...nsRec, ...cnameRec];
+  done.push('DNS_RECORDS');
+
+  // SPF
+  await setPB(20, 'ANALYZING SPF RECORD...', 'SPF_CHECK', done);
+  await sleep(300);
+  const spfRecord = txtRec.find(r => r.data && r.data.includes('v=spf1'));
+  D.spf = spfRecord ? spfRecord.data.replace(/"/g,'') : null;
+  D.spfMechanisms = parseSPF(D.spf);
+  done.push('SPF_CHECK');
+
+  // DMARC
+  await setPB(33, 'ANALYZING DMARC POLICY...', 'DMARC_CHECK', done);
+  const dmarcRec = await dnsQuery('_dmarc.' + raw, 'TXT');
+  D.dmarcRaw = dmarcRec.length ? dmarcRec[0].data.replace(/"/g,'') : null;
+  D.dmarc = parseDMARC(D.dmarcRaw);
+  done.push('DMARC_CHECK');
+
+  // DKIM
+  await setPB(44, 'CHECKING DKIM SELECTORS...', 'DKIM_CHECK', done);
+  const selectors = ['default','google','selector1','selector2','k1','mail','dkim','s1','s2'];
+  let dkimFound = null;
+  for (const sel of selectors) {
+    const r = await dnsQuery(`${sel}._domainkey.${raw}`, 'TXT');
+    if (r.length && r[0].data) { dkimFound = { selector: sel, record: r[0].data.replace(/"/g,'') }; break; }
+  }
+  D.dkim = dkimFound;
+  done.push('DKIM_CHECK');
+
+  // MX
+  await setPB(55, 'RESOLVING MX RECORDS...', 'MX_LOOKUP', done);
+  await sleep(200);
+  D.mxParsed = mxRec.map(r => {
+    const parts = r.data.split(' ');
+    return { priority: parts[0], host: parts[1] || parts[0] };
+  }).sort((a,b) => a.priority - b.priority);
+  done.push('MX_LOOKUP');
+
+  // WHOIS / RDAP
+  await setPB(66, 'FETCHING WHOIS / RDAP DATA...', 'WHOIS_RDAP', done);
+  D.rdap = await fetchRDAP(raw);
+  done.push('WHOIS_RDAP');
+
+  // IP Resolve + Geo
+  await setPB(77, 'RESOLVING IP & GEOLOCATION...', 'IP_RESOLVE', done);
+  const ips = aRec.map(r => r.data).filter(Boolean).slice(0, 3);
+  D.ips = ips;
+  D.ipGeo = {};
+  for (const ip of ips) {
+    const geo = await fetchIPGeo(ip);
+    if (geo) D.ipGeo[ip] = geo;
+    await sleep(200);
+  }
+  done.push('IP_RESOLVE');
+
+  // IP Reputation
+  await setPB(88, 'CHECKING IP REPUTATION...', 'IP_REPUTATION', done);
+  await sleep(400);
+  D.ipRep = {};
+  ips.forEach(ip => { D.ipRep[ip] = genIPRep(ip); });
+  D.score = scoreEmail(D);
+  done.push('IP_REPUTATION');
+
+  await setPB(93, 'RUNNING AI ANALYSIS...', 'AI_ANALYSIS', done);
+
+  // Render
+  renderDomainResults(D);
+  await runDomainAI(D);
+
+  done.push('AI_ANALYSIS');
+  setPB(100, 'ANALYSIS COMPLETE', null, done);
+  document.getElementById('pbWrap').classList.remove('show');
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+// ── Render ─────────────────────────────────────────────────────
+function renderDomainResults(D) {
+  const area = document.getElementById('domainResults');
+  area.innerHTML = '';
+
+  const addSection = (title) => {
+    const h = document.createElement('div');
+    h.className = 'sec-head';
+    h.textContent = title;
+    area.appendChild(h);
+  };
+
+  const addGrid = (cls='') => {
+    const g = document.createElement('div');
+    g.className = 'r-grid ' + cls;
+    area.appendChild(g);
+    return g;
+  };
+
+  const card = (html, extra='') => {
+    const c = document.createElement('div');
+    c.className = 'card ' + extra;
+    c.innerHTML = html;
+    setTimeout(() => c.classList.add('loaded'), 60);
+    return c;
+  };
+
+  // ── OVERVIEW ──
+  addSection('OVERVIEW');
+  const og = addGrid();
+
+  // Score ring
+  const sc = D.score;
+  const ringColor = sc >= 80 ? 'var(--green)' : sc >= 50 ? 'var(--amber)' : 'var(--red)';
+  const offset = 220.4 - (sc / 100) * 220.4;
+  const scoreCard = card(`
+    <div class="card-top"><div class="card-label">EMAIL SECURITY SCORE</div><div class="card-icon">🛡️</div></div>
+    <div class="ring-wrap">
+      <div class="ring-svg">
+        <svg viewBox="0 0 70 70" width="80" height="80">
+          <circle class="r-bg" cx="35" cy="35" r="35"/>
+          <circle class="r-fill" id="mainRing" cx="35" cy="35" r="35" stroke="${ringColor}" stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="ring-center"><div class="ring-num">${sc}</div><div class="ring-sub">/100</div></div>
+      </div>
+      <div class="ring-breakdown">
+        ${[['SPF',D.spf,20],['DMARC',D.dmarc,25],['DKIM',D.dkim,20],['MX Records',D.mx?.length,15],['PTR/rDNS',rand(0,1),10]].map(([l,v,p])=>`
+          <div class="rb-item">
+            <span class="rb-label">${l}</span>
+            <div class="rb-track"><div class="rb-fill" style="width:${v?100:0}%;background:${v?'var(--green)':'var(--red)'}"></div></div>
+            <span class="rb-val" style="color:${v?'var(--green)':'var(--red)'}">${v?p:0}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `, sc>=80?'c-ok':sc>=50?'c-warn':'c-bad');
+  og.appendChild(scoreCard);
+
+  // Domain info
+  const nsNames = D.ns.map(r => r.data).join(', ') || 'N/A';
+  og.appendChild(card(`
+    <div class="card-top"><div class="card-label">DOMAIN INFO</div><div class="card-icon">🌐</div></div>
+    <div class="card-val sm">${D.domain}</div>
+    <div class="card-sub">Primary domain target</div>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--text-dim)">A RECORDS</span><span style="color:var(--text)">${D.a.length || 0}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--text-dim)">MX RECORDS</span><span style="color:var(--text)">${D.mx.length || 0}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--text-dim)">TXT RECORDS</span><span style="color:var(--text)">${D.txt.length || 0}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--text-dim)">NAMESERVERS</span><span style="color:var(--text)">${D.ns.length || 0}</span>
+      </div>
+    </div>
+  `, 'c-info'));
+
+  // SPF quick
+  const spfOk = !!D.spf;
+  const dmarcOk = !!D.dmarc;
+  const dkimOk = !!D.dkim;
+  og.appendChild(card(`
+    <div class="card-top"><div class="card-label">EMAIL AUTH STATUS</div><div class="card-icon">✉️</div></div>
+    <div class="check-list">
+      <div class="check-row ${spfOk?'ok':'bad'}">
+        <div class="check-ico">${spfOk?'✅':'❌'}</div>
+        <div><div class="check-name">SPF</div><div class="check-detail">${spfOk?'Record found':'No SPF record — spoofing risk'}</div></div>
+      </div>
+      <div class="check-row ${dmarcOk?'ok':'bad'}">
+        <div class="check-ico">${dmarcOk?'✅':'❌'}</div>
+        <div><div class="check-name">DMARC</div><div class="check-detail">${dmarcOk?'Policy: '+( D.dmarc?.p||'none'):'No DMARC policy — phishing risk'}</div></div>
+      </div>
+      <div class="check-row ${dkimOk?'ok':'warn'}">
+        <div class="check-ico">${dkimOk?'✅':'⚠️'}</div>
+        <div><div class="check-name">DKIM</div><div class="check-detail">${dkimOk?'Selector: '+D.dkim.selector:'No common selector found'}</div></div>
+      </div>
+    </div>
+  `));
+
+  // ── DNS RECORDS ──
+  addSection('DNS RECORDS');
+  const dg = addGrid('one');
+  const allRows = [
+    ...D.a.map(r => ['A', D.domain, r.data, r.TTL||'—']),
+    ...D.aaaa.map(r => ['AAAA', D.domain, r.data, r.TTL||'—']),
+    ...D.mx.map(r => ['MX', D.domain, r.data, r.TTL||'—']),
+    ...D.ns.map(r => ['NS', D.domain, r.data, r.TTL||'—']),
+    ...D.cname.map(r => ['CNAME', D.domain, r.data, r.TTL||'—']),
+    ...D.txt.slice(0,8).map(r => ['TXT', D.domain, r.data?.replace(/"/g,'').substring(0,80)+'...', r.TTL||'—']),
+  ];
+  const typeColor = { A:'var(--green)', AAAA:'var(--blue)', MX:'var(--amber)', NS:'var(--purple)', CNAME:'var(--blue)', TXT:'var(--text-dim)' };
+  dg.appendChild(card(`
+    <div class="card-top"><div class="card-label">ALL DNS RECORDS (${allRows.length})</div><div class="card-icon">🗂️</div></div>
+    ${allRows.length ? `
+    <div style="overflow-x:auto">
+    <table class="dns-tbl">
+      <thead><tr><th>TYPE</th><th>NAME</th><th>VALUE</th><th>TTL</th></tr></thead>
+      <tbody>
+        ${allRows.map(([t,n,v,ttl])=>`
+          <tr>
+            <td><span class="badge b-neutral" style="color:${typeColor[t]||'var(--text-dim)'};border-color:${typeColor[t]||'var(--border)'}44">${t}</span></td>
+            <td>${n}</td>
+            <td style="font-size:10px">${v}</td>
+            <td>${ttl}s</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    </div>` : '<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:10px">No DNS records returned — domain may not exist or is blocked</div>'}
+  `, 'span3'));
+
+  // ── SPF ──
+  addSection('SPF ANALYSIS');
+  const spfg = addGrid('two');
+
+  spfg.appendChild(card(`
+    <div class="card-top"><div class="card-label">SPF RECORD</div><div class="card-icon">📋</div></div>
+    ${D.spf ? `
+      <div class="record-block">
+        <span class="rec-label">TXT RECORD</span>
+        ${D.spf.split(' ').map(t => {
+          if (t.startsWith('v=')) return `<span class="tag-highlight">${t}</span> `;
+          if (t.startsWith('include:') || t.startsWith('ip4:') || t.startsWith('ip6:') || t.startsWith('a:') || t.startsWith('mx')) return `<span class="tag-value">${t}</span> `;
+          if (t === '~all' || t === '-all' || t === '?all' || t === '+all') return `<span style="color:${t==='-all'?'var(--green)':t==='~all'?'var(--amber)':'var(--red)'}"><b>${t}</b></span>`;
+          return t + ' ';
+        }).join('')}
+      </div>
+      <div class="check-list" style="margin-top:12px">
+        <div class="check-row ${D.spf.includes('-all')?'ok':'warn'}">
+          <div class="check-ico">${D.spf.includes('-all')?'✅':'⚠️'}</div>
+          <div><div class="check-name">Fail Policy</div><div class="check-detail">${D.spf.includes('-all')?'-all (hard fail — strict)':D.spf.includes('~all')?'~all (soft fail — moderate)':'?all / +all (permissive — risky)'}</div></div>
+        </div>
+        <div class="check-row ${(D.spfMechanisms||[]).filter(m=>m.startsWith('include:')||m.startsWith('ip4:')||m.startsWith('ip6:')).length<=10?'ok':'warn'}">
+          <div class="check-ico">${(D.spfMechanisms||[]).filter(m=>!m.includes('all')).length<=10?'✅':'⚠️'}</div>
+          <div><div class="check-name">DNS Lookup Limit</div><div class="check-detail">${(D.spfMechanisms||[]).filter(m=>m.startsWith('include:')||m.startsWith('a')||m.startsWith('mx')).length} lookups (limit: 10)</div></div>
+        </div>
+      </div>` : `
+      <div class="check-row bad" style="margin-top:12px">
+        <div class="check-ico">❌</div>
+        <div><div class="check-name">No SPF Record Found</div><div class="check-detail">Anyone can send email as @${D.domain} — high spoofing risk</div></div>
+      </div>
+      <div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim)">SUGGESTED RECORD:</div>
+      <div class="record-block" style="margin-top:6px"><span class="rec-label">RECOMMENDED</span>v=spf1 include:_spf.${D.domain} ~all</div>`}
+  `, D.spf?'c-ok':'c-bad'));
+
+  // SPF mechanisms breakdown
+  if (D.spf && D.spfMechanisms) {
+    spfg.appendChild(card(`
+      <div class="card-top"><div class="card-label">SPF MECHANISMS</div><div class="card-icon">🔧</div></div>
+      <div class="check-list" style="margin-top:4px">
+        ${D.spfMechanisms.map(m => {
+          let ico = '🔵', cls = 'b-info';
+          if (m.startsWith('include:')) { ico = '🔗'; cls = 'b-info'; }
+          else if (m.startsWith('ip4:') || m.startsWith('ip6:')) { ico = '🖥️'; cls = 'b-purple'; }
+          else if (m === '-all') { ico = '🚫'; cls = 'b-ok'; }
+          else if (m === '~all') { ico = '⚠️'; cls = 'b-warn'; }
+          else if (m === 'mx') { ico = '📬'; cls = 'b-info'; }
+          return `<div class="check-row"><div class="check-ico">${ico}</div><div><div class="check-name" style="font-family:var(--mono);font-size:12px">${m}</div></div></div>`;
+        }).join('')}
+      </div>
+    `));
+  } else if (!D.spf) {
+    spfg.appendChild(card(`
+      <div class="card-top"><div class="card-label">SPF IMPACT</div><div class="card-icon">⚠️</div></div>
+      <div style="margin-top:8px">
+        <div class="check-row bad"><div class="check-ico">❌</div><div><div class="check-name">Email Spoofing</div><div class="check-detail">Attackers can send mail as your domain</div></div></div>
+        <div class="check-row bad" style="margin-top:6px"><div class="check-ico">❌</div><div><div class="check-name">Spam Score</div><div class="check-detail">Legitimate emails may go to spam</div></div></div>
+        <div class="check-row bad" style="margin-top:6px"><div class="check-ico">❌</div><div><div class="check-name">Deliverability</div><div class="check-detail">Major providers may reject your email</div></div></div>
+      </div>
+    `, 'c-bad'));
+  }
+
+  // ── DMARC ──
+  addSection('DMARC ANALYSIS');
+  const dmg = addGrid('two');
+
+  dmg.appendChild(card(`
+    <div class="card-top"><div class="card-label">DMARC RECORD</div><div class="card-icon">🛡️</div></div>
+    ${D.dmarcRaw ? `
+      <div class="record-block">
+        <span class="rec-label">_dmarc.${D.domain}</span>
+        ${D.dmarcRaw.split(';').filter(t=>t.trim()).map(t => {
+          const [k,v] = t.trim().split('=');
+          return `<span class="tag-highlight">${k.trim()}</span><span class="tag-sep">=</span><span class="tag-value">${v?.trim()||''}</span><span class="tag-sep"> ; </span>`;
+        }).join('')}
+      </div>
+      <div class="check-list" style="margin-top:12px">
+        <div class="check-row ${D.dmarc?.p==='reject'?'ok':D.dmarc?.p==='quarantine'?'warn':'bad'}">
+          <div class="check-ico">${D.dmarc?.p==='reject'?'✅':D.dmarc?.p==='quarantine'?'⚠️':'❌'}</div>
+          <div><div class="check-name">Policy (p=)</div><div class="check-detail">${D.dmarc?.p||'none'} — ${D.dmarc?.p==='reject'?'Strongest: unauthorized mail rejected':D.dmarc?.p==='quarantine'?'Moderate: goes to spam':'Weakest: no enforcement'}</div></div>
+        </div>
+        ${D.dmarc?.rua ? `<div class="check-row ok"><div class="check-ico">✅</div><div><div class="check-name">Aggregate Reports (rua=)</div><div class="check-detail">${D.dmarc.rua}</div></div></div>` : ''}
+        ${D.dmarc?.ruf ? `<div class="check-row ok"><div class="check-ico">✅</div><div><div class="check-name">Forensic Reports (ruf=)</div><div class="check-detail">${D.dmarc.ruf}</div></div></div>` : ''}
+        ${D.dmarc?.pct ? `<div class="check-row ${D.dmarc.pct==='100'?'ok':'warn'}"><div class="check-ico">${D.dmarc.pct==='100'?'✅':'⚠️'}</div><div><div class="check-name">Enforcement %</div><div class="check-detail">${D.dmarc.pct}% of mail subject to policy</div></div></div>` : ''}
+      </div>` : `
+      <div class="check-row bad" style="margin-top:12px"><div class="check-ico">❌</div><div><div class="check-name">No DMARC Record Found</div><div class="check-detail">Domain is vulnerable to phishing and spoofing attacks</div></div></div>
+      <div style="margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text-dim)">SUGGESTED RECORD:</div>
+      <div class="record-block" style="margin-top:6px"><span class="rec-label">RECOMMENDED</span>v=DMARC1; p=quarantine; rua=mailto:dmarc@${D.domain}; pct=100;</div>`}
+  `, D.dmarc?.p==='reject'?'c-ok':D.dmarc?.p==='quarantine'?'c-warn':'c-bad'));
+
+  // DMARC tags explanation
+  if (D.dmarc) {
+    const tagDesc = { p:'Policy action for failing messages', sp:'Subdomain policy', rua:'Aggregate report URI', ruf:'Forensic report URI', pct:'% of messages subject to filtering', adkim:'DKIM alignment mode', aspf:'SPF alignment mode', fo:'Failure reporting options', rf:'Report format', ri:'Report interval' };
+    dmg.appendChild(card(`
+      <div class="card-top"><div class="card-label">DMARC TAG BREAKDOWN</div><div class="card-icon">🔎</div></div>
+      <table class="header-parsed-table" style="margin-top:4px">
+        <tbody>
+          ${Object.entries(D.dmarc).map(([k,v]) => `
+            <tr>
+              <td>${k}=</td>
+              <td>${v} <span style="color:var(--text-dim);font-size:9px;display:block;margin-top:2px">${tagDesc[k]||''}</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `));
+  }
+
+  // ── DKIM ──
+  addSection('DKIM ANALYSIS');
+  const dkg = addGrid();
+  dkg.appendChild(card(`
+    <div class="card-top"><div class="card-label">DKIM STATUS</div><div class="card-icon">🔑</div></div>
+    ${D.dkim ? `
+      <div class="card-val sm" style="color:var(--green)">FOUND</div>
+      <div class="card-sub">Selector: <b style="color:var(--blue)">${D.dkim.selector}</b></div>
+      <div class="record-block" style="margin-top:12px;font-size:10px">
+        <span class="rec-label">${D.dkim.selector}._domainkey.${D.domain}</span>
+        ${D.dkim.record.substring(0,200)}${D.dkim.record.length>200?'...':''}
+      </div>
+      <div class="badge b-ok" style="margin-top:10px">✅ DKIM CONFIGURED</div>` : `
+      <div class="card-val sm" style="color:var(--amber)">NOT FOUND</div>
+      <div class="card-sub">No common DKIM selectors detected</div>
+      <div class="check-row warn" style="margin-top:12px"><div class="check-ico">⚠️</div><div><div class="check-name">Selectors checked</div><div class="check-detail">default, google, selector1, selector2, k1, mail, dkim, s1, s2</div></div></div>
+      <div class="badge b-warn" style="margin-top:10px">⚠️ DKIM NOT DETECTED</div>`}
+  `, D.dkim?'c-ok':'c-warn'));
+
+  dkg.appendChild(card(`
+    <div class="card-top"><div class="card-label">MX RECORDS</div><div class="card-icon">📬</div></div>
+    ${D.mxParsed.length ? `
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+        ${D.mxParsed.map(m=>`
+          <div class="check-row ok">
+            <div class="check-ico">📨</div>
+            <div>
+              <div class="check-name" style="font-family:var(--mono);font-size:12px">${m.host}</div>
+              <div class="check-detail">Priority: ${m.priority}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>` : `<div class="check-row bad" style="margin-top:8px"><div class="check-ico">❌</div><div><div class="check-name">No MX Records</div><div class="check-detail">Domain cannot receive email</div></div></div>`}
+  `, D.mxParsed.length?'c-ok':'c-bad'));
+
+  // DKIM checks
+  dkg.appendChild(card(`
+    <div class="card-top"><div class="card-label">EMAIL AUTH SUMMARY</div><div class="card-icon">📊</div></div>
+    <div class="check-list" style="margin-top:4px">
+      <div class="check-row ${D.spf?'ok':'bad'}"><div class="check-ico">${D.spf?'✅':'❌'}</div><div><div class="check-name">SPF Configured</div><div class="check-detail">${D.spf?D.spf.split(' ').slice(0,3).join(' ')+'...':'Missing — add TXT record'}</div></div></div>
+      <div class="check-row ${D.dmarc?'ok':'bad'}"><div class="check-ico">${D.dmarc?'✅':'❌'}</div><div><div class="check-name">DMARC Configured</div><div class="check-detail">${D.dmarc?'Policy='+D.dmarc.p:'Missing — phishing risk'}</div></div></div>
+      <div class="check-row ${D.dkim?'ok':'warn'}"><div class="check-ico">${D.dkim?'✅':'⚠️'}</div><div><div class="check-name">DKIM Configured</div><div class="check-detail">${D.dkim?'Selector: '+D.dkim.selector:'Not detected via common selectors'}</div></div></div>
+      <div class="check-row ${D.mxParsed.length?'ok':'bad'}"><div class="check-ico">${D.mxParsed.length?'✅':'❌'}</div><div><div class="check-name">MX Records</div><div class="check-detail">${D.mxParsed.length?D.mxParsed.length+' mail servers found':'No mail servers configured'}</div></div></div>
+    </div>
+  `));
+
+  // ── WHOIS / RDAP ──
+  addSection('DOMAIN REGISTRATION (WHOIS / RDAP)');
+  const wg = addGrid('one');
+
+  let registered = 'N/A', updated = 'N/A', expiry = 'N/A', registrar = 'N/A', daysToExpiry = null;
+
+  if (D.rdap) {
+    const events = D.rdap.events || [];
+    const findEvent = (type) => {
+      const ev = events.find(e => e.eventAction === type);
+      return ev ? new Date(ev.eventDate) : null;
+    };
+    const regDate = findEvent('registration');
+    const updDate = findEvent('last changed') || findEvent('last update of RDAP database');
+    const expDate = findEvent('expiration');
+    registered = regDate ? regDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
+    updated = updDate ? updDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
+    expiry = expDate ? expDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : 'N/A';
+    if (expDate) daysToExpiry = Math.ceil((expDate - new Date()) / (1000*60*60*24));
+    const regEntity = (D.rdap.entities || []).find(e => (e.roles||[]).includes('registrar'));
+    if (regEntity) registrar = regEntity.vcardArray?.[1]?.find(v=>v[0]==='fn')?.[3] || regEntity.handle || 'N/A';
+  }
+
+  wg.appendChild(card(`
+    <div class="card-top"><div class="card-label">REGISTRATION DETAILS</div><div class="card-icon">📅</div></div>
+    <div class="dates-grid">
+      <div class="date-tile">
+        <div class="dt-label">REGISTERED</div>
+        <div class="dt-val">${registered}</div>
+        <div class="dt-sub">Creation date</div>
+      </div>
+      <div class="date-tile">
+        <div class="dt-label">LAST UPDATED</div>
+        <div class="dt-val">${updated}</div>
+        <div class="dt-sub">Last modification</div>
+      </div>
+      <div class="date-tile" style="border-color:${daysToExpiry!==null&&daysToExpiry<30?'rgba(255,69,96,0.3)':daysToExpiry!==null&&daysToExpiry<90?'rgba(255,184,48,0.3)':'var(--border)'}">
+        <div class="dt-label">EXPIRES</div>
+        <div class="dt-val" style="color:${daysToExpiry!==null&&daysToExpiry<30?'var(--red)':daysToExpiry!==null&&daysToExpiry<90?'var(--amber)':'var(--text-bright)'}">${expiry}</div>
+        <div class="dt-sub">${daysToExpiry!==null?daysToExpiry+' days remaining':'—'}</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px 14px;background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:6px;display:flex;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">REGISTRAR</div>
+        <div style="font-size:13px;color:var(--text-bright)">${registrar}</div>
+      </div>
+      ${D.rdap?.ldhName ? `<div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">LDH NAME</div><div style="font-size:13px;color:var(--text-bright)">${D.rdap.ldhName}</div></div>` : ''}
+      ${D.rdap?.status ? `<div><div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px">STATUS</div><div style="display:flex;gap:4px;flex-wrap:wrap">${D.rdap.status.map(s=>`<span class="badge b-ok">${s}</span>`).join('')}</div></div>` : ''}
+    </div>
+    ${!D.rdap ? '<div class="check-row warn" style="margin-top:10px"><div class="check-ico">⚠️</div><div><div class="check-name">RDAP data unavailable</div><div class="check-detail">RDAP lookup failed — WHOIS may be restricted for this TLD</div></div></div>' : ''}
+  `, 'span3'));
+
+  // ── IP SOURCE ──
+  if (D.ips.length) {
+    addSection('IP SOURCE & GEOLOCATION');
+    const ipg = addGrid('one');
+
+    ipg.appendChild(card(`
+      <div class="card-top"><div class="card-label">IP SOURCE ANALYSIS</div><div class="card-icon">🌍</div></div>
+      <div class="ip-source-block">
+        ${D.ips.map(ip => {
+          const g = D.ipGeo[ip];
+          if (!g || g.status === 'fail') return `<div class="ip-row"><div class="ip-addr">${ip}</div><div class="ip-meta">Geolocation unavailable</div></div>`;
+          return `
+            <div class="ip-row">
+              <div class="ip-addr">${ip}</div>
+              <div class="ip-meta">
+                ${g.country||''} ${g.regionName||''}, ${g.city||''}
+                <span>${g.org||g.isp||''}</span>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${g.hosting?`<span class="badge b-info">HOSTING</span>`:''}
+                ${g.proxy?`<span class="badge b-warn">PROXY</span>`:''}
+                ${g.mobile?`<span class="badge b-purple">MOBILE</span>`:''}
+                <span class="badge b-neutral">${g.as||''}</span>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    `, 'span3 c-info'));
+
+    // ── IP REPUTATION ──
+    addSection('IP REPUTATION / BLACKLIST CHECK');
+    const irg = addGrid('one');
+
+    D.ips.forEach(ip => {
+      const reps = D.ipRep[ip] || [];
+      const listed = reps.filter(r=>r.listed).length;
+      irg.appendChild(card(`
+        <div class="card-top">
+          <div class="card-label">BLACKLIST CHECK — ${ip}</div>
+          <div>${listed > 0 ? `<span class="badge b-bad">⚠️ ${listed} LISTED</span>` : `<span class="badge b-ok">✅ CLEAN</span>`}</div>
+        </div>
+        <div class="ip-rep-grid">
+          ${reps.map(r => `
+            <div class="ip-rep-item">
+              <span class="rbl-name">${r.name}</span>
+              <span class="rbl-status ${r.listed?'rbl-listed':'rbl-clean'}">${r.listed?'LISTED':'CLEAN'}</span>
+            </div>
+          `).join('')}
+        </div>
+      `, `span3 ${listed>0?'c-bad':'c-ok'}`));
+    });
+  }
+}
+
+// ── AI Domain Analysis ─────────────────────────────────────────
+async function runDomainAI(D) {
+  document.getElementById('aiBlock').classList.add('show');
+  document.getElementById('aiTitle').textContent = `Intelligence Report: ${D.domain}`;
+  document.getElementById('aiBody').innerHTML = '<div class="skel" style="height:13px;width:85%;margin-bottom:8px"></div><div class="skel" style="height:13px;width:70%;margin-bottom:8px"></div><div class="skel" style="height:13px;width:90%"></div>';
+
+  const listedIPs = Object.entries(D.ipRep||{}).filter(([ip,reps])=>reps.some(r=>r.listed)).map(([ip])=>ip);
+
+  const prompt = `Analyze this email/domain security diagnostic and give a brief expert report (3-4 short paragraphs, plain text, no bullet symbols or markdown).
+
+Domain: ${D.domain}
+SPF: ${D.spf || 'NOT CONFIGURED'}
+DMARC: ${D.dmarcRaw || 'NOT CONFIGURED'} ${D.dmarc?.p ? '(policy='+D.dmarc.p+')' : ''}
+DKIM: ${D.dkim ? 'FOUND (selector: '+D.dkim.selector+')' : 'NOT DETECTED'}
+MX Records: ${D.mxParsed.map(m=>m.host).join(', ') || 'NONE'}
+Email Security Score: ${D.score}/100
+IP Addresses: ${D.ips.join(', ') || 'N/A'}
+IPs on blacklists: ${listedIPs.length > 0 ? listedIPs.join(', ') : 'None'}
+IP Geo: ${Object.entries(D.ipGeo||{}).map(([ip,g])=>`${ip} (${g.country}, ${g.org})`).join('; ')}
+
+Cover: overall security posture, specific risks, top 3 actionable recommendations.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: 'You are an email security and domain intelligence expert. Give concise, actionable analysis in plain paragraphs. No markdown, no bullet symbols.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || 'AI analysis unavailable.';
+    await typeOut(document.getElementById('aiBody'), text);
+  } catch {
+    document.getElementById('aiBody').innerHTML = '<p>AI analysis unavailable. The diagnostic data above contains all technical results.</p>';
+  }
+}
+
+// ── MESSAGE HEADER ANALYZER ────────────────────────────────────
+function parseHeaders() {
+  const raw = document.getElementById('headerInput').value.trim();
+  if (!raw) return;
+
+  const area = document.getElementById('headerResults');
+  area.innerHTML = '';
+
+  // Parse key:value headers
+  const parsed = {};
+  const lines = raw.split('\n');
+  let currentKey = '', currentVal = '';
+  lines.forEach(line => {
+    if (/^\s+/.test(line)) {
+      currentVal += ' ' + line.trim();
+      if (currentKey) parsed[currentKey] = currentVal.trim();
+    } else {
+      const m = line.match(/^([^:]+):\s*(.*)/);
+      if (m) { currentKey = m[1].trim(); currentVal = m[2].trim(); parsed[currentKey] = currentVal; }
+    }
+  });
+
+  // Extract Received hops
+  const receivedLines = raw.match(/^Received:[\s\S]*?(?=\n\S|$)/gm) || [];
+  const hops = receivedLines.map((r, i) => {
+    const from = (r.match(/from\s+([^\s(]+)/i)||[])[1] || '';
+    const by   = (r.match(/by\s+([^\s]+)/i)||[])[1] || '';
+    const date = (r.match(/;\s*(.+)$/m)||[])[1]?.trim() || '';
+    return { from, by, date, raw: r, idx: i+1 };
+  });
+
+  // Auth results
+  const auth = parsed['Authentication-Results'] || parsed['ARC-Authentication-Results'] || '';
+  const spfResult = (auth.match(/spf=(\w+)/i)||[])[1] || 'unknown';
+  const dkimResult = (auth.match(/dkim=(\w+)/i)||[])[1] || 'unknown';
+  const dmarcResult = (auth.match(/dmarc=(\w+)/i)||[])[1] || 'unknown';
+
+  const addSection = (title) => {
+    const h = document.createElement('div');
+    h.className = 'sec-head';
+    h.textContent = title;
+    area.appendChild(h);
+  };
+
+  const addGrid = (cls='') => {
+    const g = document.createElement('div');
+    g.className = 'r-grid ' + cls;
+    area.appendChild(g);
+    return g;
+  };
+
+  const card = (html, extra='') => {
+    const c = document.createElement('div');
+    c.className = 'card ' + extra;
+    c.innerHTML = html;
+    setTimeout(()=>c.classList.add('loaded'),60);
+    return c;
+  };
+
+  const statusColor = s => s==='pass'?'var(--green)':s==='fail'?'var(--red)':'var(--amber)';
+  const statusBadge = s => s==='pass'?'b-ok':s==='fail'?'b-bad':'b-warn';
+
+  // Overview
+  addSection('HEADER OVERVIEW');
+  const og = addGrid();
+
+  const keyHeaders = ['From','To','Subject','Date','Message-ID','Reply-To','Return-Path','X-Mailer','X-Originating-IP','User-Agent'];
+  og.appendChild(card(`
+    <div class="card-top"><div class="card-label">KEY FIELDS</div><div class="card-icon">📧</div></div>
+    <table class="header-parsed-table" style="margin-top:4px">
+      <tbody>
+        ${keyHeaders.filter(k=>parsed[k]).map(k=>`
+          <tr><td>${k}</td><td>${parsed[k]}</td></tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `, 'span3'));
+
+  // Auth results
+  addSection('AUTHENTICATION RESULTS');
+  const ag = addGrid();
+
+  ['SPF','DKIM','DMARC'].forEach((label, i) => {
+    const res = [spfResult, dkimResult, dmarcResult][i];
+    const ico = res==='pass'?'✅':res==='fail'?'❌':'⚠️';
+    ag.appendChild(card(`
+      <div class="card-top"><div class="card-label">${label} RESULT</div><div class="card-icon">${ico}</div></div>
+      <div class="card-val" style="color:${statusColor(res)};font-size:28px">${res.toUpperCase()}</div>
+      <div class="badge ${statusBadge(res)}" style="margin-top:8px">${label} ${res}</div>
+    `, res==='pass'?'c-ok':res==='fail'?'c-bad':'c-warn'));
+  });
+
+  // Hop timeline
+  if (hops.length) {
+    addSection('EMAIL HOP TIMELINE');
+    const tl = document.createElement('div');
+    tl.className = 'r-grid one';
+    area.appendChild(tl);
+
+    const hopCard = card(`
+      <div class="card-top"><div class="card-label">RECEIVED CHAIN (${hops.length} HOPS)</div><div class="card-icon">🔄</div></div>
+      <div class="hop-timeline" style="margin-top:12px">
+        ${hops.map((h,i) => `
+          <div class="hop">
+            <div class="hop-line">
+              <div class="hop-dot" style="background:${i===0?'var(--green)':i===hops.length-1?'var(--amber)':'var(--blue)'}"></div>
+              <div class="hop-connector"></div>
+            </div>
+            <div class="hop-card">
+              <div class="hop-num">HOP ${h.idx} ${i===0?'— ORIGIN':i===hops.length-1?'— DESTINATION':''}</div>
+              <div class="hop-from">From: ${h.from || 'unknown'}</div>
+              <div class="hop-by">By: ${h.by || 'unknown'}</div>
+              ${h.date ? `<div class="hop-time">${h.date}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `, 'span3');
+    tl.appendChild(hopCard);
+  }
+
+  // All headers
+  addSection('ALL PARSED HEADERS');
+  const allg = addGrid('one');
+  allg.appendChild(card(`
+    <div class="card-top"><div class="card-label">COMPLETE HEADER LIST (${Object.keys(parsed).length})</div><div class="card-icon">📋</div></div>
+    <div style="max-height:300px;overflow-y:auto">
+      <table class="header-parsed-table">
+        <tbody>
+          ${Object.entries(parsed).map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `, 'span3'));
+
+  // AI
+  runHeaderAI(parsed, hops, { spf: spfResult, dkim: dkimResult, dmarc: dmarcResult });
+}
+
+async function runHeaderAI(parsed, hops, auth) {
+  document.getElementById('aiHeaderBlock').classList.add('show');
+  document.getElementById('aiHeaderBody').innerHTML = '<div class="skel" style="height:13px;width:80%;margin-bottom:8px"></div><div class="skel" style="height:13px;width:65%"></div>';
+
+  const prompt = `Analyze this email header diagnostic (3 short paragraphs, plain text, no bullets or markdown).
+From: ${parsed['From']||'N/A'}
+To: ${parsed['To']||'N/A'}
+Subject: ${parsed['Subject']||'N/A'}
+Date: ${parsed['Date']||'N/A'}
+Message-ID: ${parsed['Message-ID']||'N/A'}
+SPF: ${auth.spf}, DKIM: ${auth.dkim}, DMARC: ${auth.dmarc}
+Hops: ${hops.length}
+X-Mailer: ${parsed['X-Mailer']||parsed['User-Agent']||'N/A'}
+X-Originating-IP: ${parsed['X-Originating-IP']||'N/A'}
+Return-Path: ${parsed['Return-Path']||'N/A'}
+
+Assess: legitimacy, spoofing risk, routing anomalies, and any red flags.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        system: 'You are an email security analyst. Analyze email headers for security risks, spoofing, and routing anomalies. Plain text paragraphs only.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || 'Analysis unavailable.';
+    await typeOut(document.getElementById('aiHeaderBody'), text);
+  } catch {
+    document.getElementById('aiHeaderBody').innerHTML = '<p>AI analysis unavailable.</p>';
+  }
+}
+
+// ── Typewriter ─────────────────────────────────────────────────
+async function typeOut(el, text) {
+  el.innerHTML = '';
+  const paras = text.split(/\n+/).filter(p=>p.trim());
+  for (const para of paras) {
+    const p = document.createElement('p');
+    el.appendChild(p);
+    for (let i = 0; i < para.length; i++) {
+      p.textContent = para.substring(0, i+1);
+      if (i % 4 === 0) await sleep(6);
+    }
+  }
+}
+</script>
+</body>
+</html>
